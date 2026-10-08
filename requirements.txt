@@ -1,0 +1,10 @@
+# Python deps. System deps (install separately): ffmpeg, and yt-dlp needs nothing extra.
+yt-dlp>=2025.1.1
+faster-whisper>=1.1.0
+anthropic>=0.40.0
+PyYAML>=6.0
+# Pillow is used for the libass-free caption renderer (fallback when ffmpeg
+# lacks the ass/subtitles filter) and to draw the reaction character.
+Pillow>=10.0
+# Flask powers the optional web UI (python -m podcast_clipper.web).
+Flask>=3.0

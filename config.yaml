@@ -1,0 +1,63 @@
+# Podcast Clipper — default configuration.
+# Every value here can be overridden with a CLI flag. See: python -m podcast_clipper --help
+
+# --- Clip selection ---
+num_clips: 6
+min_clip_seconds: 20
+max_clip_seconds: 60
+
+# --- Output / working dirs ---
+output_dir: output
+work_dir: work
+
+# --- Final vertical video (9:16) ---
+width: 1080
+height: 1920
+fps: 30
+
+# --- Download / Encoding ---
+max_download_height: 1080    # cap yt-dlp video height (don't fetch 4K for a 1080-wide vertical)
+video_crf: 20
+video_preset: veryfast
+audio_bitrate: 160k
+
+# --- Transcription (faster-whisper, runs locally) ---
+whisper_model: small         # tiny | base | small | medium | large-v3  (bigger = better + slower)
+whisper_compute_type: int8   # int8 is fast on Apple Silicon / CPU
+whisper_device: auto         # auto | cpu | cuda
+whisper_language: null       # null = autodetect, or e.g. "en"
+max_source_minutes: null     # null = whole episode; set e.g. 15 for quick test runs
+
+# --- Highlight detection ---
+highlight_backend: claude    # claude | heuristic
+claude_model: claude-opus-4-8
+claude_max_tokens: 8000
+allow_heuristic_fallback: true  # if the Claude call fails, still produce clips heuristically
+
+# --- Captions (burned-in karaoke style) ---
+captions_enabled: true
+caption_font: Arial
+caption_fontsize: 84
+caption_words_per_line: 4
+caption_primary_color: "&H0000FFFF"    # active/spoken word — yellow (ASS is &HAABBGGRR)
+caption_secondary_color: "&H00FFFFFF"  # not-yet-spoken — white
+caption_outline_color: "&H00000000"    # black
+caption_outline: 4
+caption_margin_v: 600                  # vertical offset from bottom, in px
+
+# --- Reaction character overlay (Phase 2) ---
+character_enabled: true
+character_set: bean             # folder under assets/characters/ (swap for your own mascot)
+character_corner: bottom-right  # bottom-right | bottom-left | top-right | top-left
+character_height_frac: 0.22     # character height as a fraction of the video height
+character_margin: 40            # px inset from the frame edges
+
+# --- On-screen hook banner (persistent, top) ---
+hook_enabled: true
+hook_font: Arial
+hook_fontsize: 62
+hook_margin_top: 96             # px from the top edge
+hook_max_width_frac: 0.86       # banner max width as a fraction of video width
+hook_text_color: "&H00FFFFFF"   # white (ASS &HAABBGGRR)
+hook_bg_color: "&H00000000"     # bar colour behind the text
+hook_bg_opacity: 0.55           # 0 = transparent, 1 = opaque
