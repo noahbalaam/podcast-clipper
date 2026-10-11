@@ -1,6 +1,9 @@
 # Python deps. System deps (install separately): ffmpeg, and yt-dlp needs nothing extra.
 yt-dlp>=2025.1.1
 faster-whisper>=1.1.0
+# PyAV is pulled in by faster-whisper; av 19.0 dropped the `metadata_errors` arg that
+# faster-whisper passes to av.open(), which breaks transcription. Pin until fixed upstream.
+av>=11,<19
 anthropic>=0.40.0
 PyYAML>=6.0
 # Pillow is used for the libass-free caption renderer (fallback when ffmpeg
