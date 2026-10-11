@@ -75,8 +75,64 @@ python -m podcast_clipper "<url>" --max-source-minutes 15 --whisper-model base -
 | `--character-set NAME` | Character asset folder under `assets/characters/` |
 | `--no-hook` | Skip the on-screen hook banner |
 | `--config path` | Use a different config file |
+| `--output-dir` / `--work-dir` | Where clips go / where downloads, transcripts and temp files are cached |
+| `--transcript-only` | Download + transcribe only; write `transcript.json` + `transcript.txt` |
+| `--clips path.json` | Cut exactly these clips (skips the selector; see below) |
 
 All defaults live in [`config.yaml`](config.yaml) and can be edited there instead of via flags.
+
+## Agent-picked clips (transcript → you/your agent pick → cut)
+
+Instead of letting the built-in selector choose, an outside agent (or a human) can read the
+transcript and hand back exact clip times. Two steps, sharing one `--work-dir` so the second
+step doesn't re-download or re-transcribe:
+
+```bash
+# 1. Download + transcribe only. Writes transcript.json + transcript.txt, cuts nothing.
+python -m podcast_clipper "<url>" --transcript-only \
+    --output-dir runs/ep1/transcript --work-dir work/ep1
+
+# 2. Cut exactly the clips listed in clips.json (selector is skipped).
+python -m podcast_clipper "<url>" --clips clips.json \
+    --min-seconds 20 --max-seconds 40 \
+    --output-dir runs/ep1/clips --work-dir work/ep1
+```
+
+**`transcript.txt`** has one line per segment, e.g. `[00:01:43.5] And then two months turned into one month...`
+**`transcript.json`** has `source_url`, `video_id`, `title`, `duration_seconds`,
+`transcribed_seconds`, `language`, and `segments[]` with `start`/`end`/`text` and word-level
+`words[]` (`start`, `end`, `text`).
+
+**`clips.json`** is a list (or `{"clips": [...]}`) of:
+
+| Field | Required | Meaning |
+|---|---|---|
+| `start`, `end` | yes | Seconds (float) in the source |
+| `title` | yes | Used for the file name (`01_<title>.mp4`) and SUGGESTIONS.md |
+| `hook` | no | On-screen banner text (no banner if empty) |
+| `caption` | no | Post caption, written to SUGGESTIONS.md |
+| `hashtags` | no | List of strings |
+| `reason` | no | Why the clip was chosen |
+| `tone` | no | `funny`/`shocking`/`thoughtful`/`intense`/`heartwarming`, picks the mascot's expression (default `thoughtful`) |
+
+Each clip's start is snapped to the start of the nearest word and its end to the end of the
+nearest word, so cuts never land mid-word. A little padding (≤0.15s before, ≤0.25s after) is
+added without going into the neighbouring word or past `--max-seconds`. A clip whose snapped length falls outside
+`--min-seconds`/`--max-seconds`, or that has a bad range, missing title, or starts past the
+transcribed audio, is **skipped with a message**. It's listed under "Skipped" in
+SUGGESTIONS.md. The run fails only if no clip is valid. Overlapping clips produce a warning.
+
+With `--clips`, any cached transcript for the video in the work dir is reused, whatever
+Whisper model or `--max-source-minutes` produced it.
+
+### Caching
+Downloads (`work-dir/sources.json`) and transcripts
+(`work-dir/<id>.transcript.<model>.<lang>.<minutes>.json`) are cached per work dir in every
+mode, so re-running on the same video with the same work dir skips both. Delete the work dir to start fresh.
+
+### Errors
+On failure the CLI exits non-zero and writes `ERROR.txt` (message + traceback) to the output
+dir. A successful run removes any stale `ERROR.txt`.
 
 ## Web UI
 
