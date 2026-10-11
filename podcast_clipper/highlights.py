@@ -24,6 +24,7 @@ class Clip:
     hashtags: list[str] = field(default_factory=list)
     reason: str = ""
     overlay_hook: str = ""  # short punchy on-screen banner text
+    caption: str = ""       # optional post caption (agent-provided clips)
 
     @property
     def duration(self) -> float:
