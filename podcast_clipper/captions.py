@@ -80,7 +80,8 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                 dur = w.end - w.start
             k = max(1, int(round(dur * 100)))
             parts.append(f"{{\\k{k}}}{_escape(w.text)}")
-        text = "".join(parts).strip()
+        # Words are stripped by _escape, so join with a space to keep them separated.
+        text = " ".join(parts).strip()
         lines.append(
             f"Dialogue: 0,{_ass_time(g_start)},{_ass_time(g_end)},Karaoke,,0,0,0,,{text}"
         )
