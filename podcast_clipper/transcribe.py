@@ -1,7 +1,8 @@
 """Transcription with faster-whisper, producing word-level timestamps."""
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+import json
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 from .util import run
@@ -44,6 +45,37 @@ class Transcript:
             lines.append(f"[{s.start:.1f}-{s.end:.1f}] {s.text.strip()}")
         return "\n".join(lines)
 
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "Transcript":
+        segs = [
+            Segment(start=float(s["start"]), end=float(s["end"]), text=s["text"],
+                    words=[Word(float(w["start"]), float(w["end"]), w["text"])
+                           for w in s.get("words", [])])
+            for s in d.get("segments", [])
+        ]
+        return cls(segments=segs, language=d.get("language") or "",
+                   duration=float(d.get("duration") or 0.0))
+
+
+def _cache_path(video_path: Path, work_dir: Path, model: str, language: str | None,
+                max_source_minutes: float | None) -> Path:
+    mins = f"{max_source_minutes:g}m" if max_source_minutes else "full"
+    return work_dir / f"{video_path.stem}.transcript.{model}.{language or 'auto'}.{mins}.json"
+
+
+def find_cached_transcript(video_path: Path, work_dir: Path) -> Path | None:
+    """Most recent cached transcript for this video, whatever settings made it."""
+    hits = sorted(work_dir.glob(f"{video_path.stem}.transcript.*.json"),
+                  key=lambda p: p.stat().st_mtime, reverse=True)
+    return hits[0] if hits else None
+
+
+def load_transcript(path: Path) -> Transcript:
+    return Transcript.from_dict(json.loads(Path(path).read_text(encoding="utf-8")))
+
 
 def _extract_audio(video_path: Path, work_dir: Path) -> Path:
     """Extract mono 16 kHz WAV — the format Whisper expects."""
@@ -58,6 +90,13 @@ def _extract_audio(video_path: Path, work_dir: Path) -> Path:
 
 def transcribe(video_path: Path, work_dir: Path, *, model: str, compute_type: str,
                device: str, language: str | None, max_source_minutes: float | None) -> Transcript:
+    cache = _cache_path(video_path, work_dir, model, language, max_source_minutes)
+    if cache.exists():
+        try:
+            return load_transcript(cache)
+        except Exception:  # noqa: BLE001 — corrupt cache, just redo it
+            pass
+
     from faster_whisper import WhisperModel
 
     audio_path = _extract_audio(video_path, work_dir)
@@ -84,4 +123,8 @@ def transcribe(video_path: Path, work_dir: Path, *, model: str, compute_type: st
                                  text=seg.text, words=words))
 
     duration = segments[-1].end if segments else 0.0
-    return Transcript(segments=segments, language=info.language, duration=duration)
+    result = Transcript(segments=segments, language=info.language, duration=duration)
+    if segments:
+        work_dir.mkdir(parents=True, exist_ok=True)
+        cache.write_text(json.dumps(result.to_dict()), encoding="utf-8")
+    return result
